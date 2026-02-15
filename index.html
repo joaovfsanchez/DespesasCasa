@@ -28,7 +28,7 @@
 <body>
 
 <div class="header-financeiro text-center">
-    <small>Total do Mês (Geral)</small>
+    <small>Total do Mês</small>
     <h3 id="resumo-geral">R$ 0,00</h3>
     <div class="resumo-grid">
         <div class="resumo-item"><small>✅ Já Pago</small><b id="resumo-pago">R$ 0,00</b></div>
@@ -73,8 +73,22 @@
 
 <script>
 const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwcsLM5J4L-cick30bCdUDwCA27sfXO_eecFlMMllN0JNl5Ns1MRQZfHfRWaCmzrhKr/exec";
-const TOKEN = "Hps@190310"; // SENHA DE SEGURANÇA
-let dataFoco = new Date();
+// 1. Tenta pegar a senha que já foi digitada antes neste celular
+let TOKEN = localStorage.getItem('token_financas');
+
+// 2. Se não tiver senha salva, pede para o usuário digitar
+if (!TOKEN) {
+    TOKEN = prompt("Por favor, digite a senha de acesso:");
+    if (TOKEN) {
+        localStorage.setItem('token_financas', TOKEN);
+    }
+}
+
+// Botão para caso você queira deslogar ou trocar a senha
+function sair() {
+    localStorage.removeItem('token_financas');
+    location.reload();
+}
 
 function mudarMes(delta) {
     dataFoco.setMonth(dataFoco.getMonth() + delta);
