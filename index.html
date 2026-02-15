@@ -5,15 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle Financeiro Familiar</title>
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2910/2910303.png">
-
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; padding-bottom: 50px; }
         .card { border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .vencido { color: #dc3545; font-weight: bold; }
-        .pago { text-decoration: line-through; color: #6c757d; }
+        /* Estilo para conta próxima do vencimento (5 dias) */
+        .vencido-alerta { 
+            background-color: #fff3cd !important; 
+            color: #856404 !important; 
+            font-weight: bold;
+            border-left: 5px solid #ffc107;
+        }
+        /* Estilo para conta já vencida */
+        .vencido-atrasado { 
+            background-color: #f8d7da !important; 
+            color: #721c24 !important; 
+        }
         .btn-cadastrar { background-color: #0d6efd; color: white; width: 100%; }
     </style>
 </head>
@@ -26,7 +35,7 @@
         <h5>Nova Despesa</h5>
         <form id="form-despesa">
             <div class="mb-2">
-                <input type="text" id="descricao" class="form-control" placeholder="Ex: Aluguel, Luz, Faculdade..." required>
+                <input type="text" id="descricao" class="form-control" placeholder="Ex: Aluguel, Luz..." required>
             </div>
             <div class="row g-2 mb-2">
                 <div class="col-6">
@@ -59,13 +68,7 @@
                     </tr>
                 </thead>
                 <tbody id="lista-contas">
-                    <tr>
-                        <td><input type="checkbox" class="form-check-input"></td>
-                        <td>Exemplo: Faculdade</td>
-                        <td>10/03</td>
-                        <td>850,00</td>
-                    </tr>
-                </tbody>
+                    </tbody>
             </table>
         </div>
     </div>
@@ -73,12 +76,76 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Por enquanto, apenas um alerta para testar o botão
-    document.getElementById('form-despesa').addEventListener('submit', function(e) {
-        e.preventDefault();
-        alert('Botão clicado! Próximo passo: Conectar com o Google Sheets.');
-    });
-</script>
+const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwcsLM5J4L-cick30bCdUDwCA27sfXO_eecFlMMllN0JNl5Ns1MRQZfHfRWaCmzrhKr/exec";
 
+// 1. FUNÇÃO PARA CARREGAR AS CONTAS
+function carregarContas() {
+    const lista = document.getElementById('lista-contas');
+    lista.innerHTML = '<tr><td colspan="4" class="text-center">Carregando...</td></tr>';
+
+    fetch(URL_GOOGLE_SCRIPT)
+        .then(response => response.json())
+        .then(dados => {
+            lista.innerHTML = ''; 
+            dados.forEach(conta => {
+                const dataVenc = new Date(conta[2]);
+                const hoje = new Date();
+                hoje.setHours(0,0,0,0);
+                
+                const diffDias = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
+                
+                let classeVencimento = "";
+                if (diffDias <= 5 && diffDias >= 0) classeVencimento = "vencido-alerta";
+                else if (diffDias < 0) classeVencimento = "vencido-atrasado";
+
+                const linha = `
+                    <tr class="${classeVencimento}">
+                        <td><input type="checkbox" class="form-check-input" ${conta[4] === 'Sim' ? 'checked' : ''}></td>
+                        <td>${conta[0]}</td>
+                        <td>${new Date(conta[2]).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</td>
+                        <td>R$ ${parseFloat(conta[1]).toFixed(2)}</td>
+                    </tr>
+                `;
+                lista.innerHTML += linha;
+            });
+        })
+        .catch(() => {
+            lista.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+        });
+}
+
+// 2. EVENTO DE ENVIO DO FORMULÁRIO
+document.getElementById('form-despesa').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.innerText = "Enviando... ⏳";
+    btn.disabled = true;
+
+    const dados = {
+        descricao: document.getElementById('descricao').value,
+        valor: document.getElementById('valor').value,
+        vencimento: document.getElementById('vencimento').value,
+        tipo: document.getElementById('tipo').value
+    };
+
+    fetch(URL_GOOGLE_SCRIPT, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify(dados)
+    })
+    .then(() => {
+        alert('Despesa salva! 🎉');
+        document.getElementById('form-despesa').reset();
+        carregarContas(); // Atualiza a lista após salvar
+    })
+    .finally(() => {
+        btn.innerText = "Adicionar à Planilha";
+        btn.disabled = false;
+    });
+});
+
+// 3. INICIALIZAÇÃO
+carregarContas();
+</script>
 </body>
 </html>
