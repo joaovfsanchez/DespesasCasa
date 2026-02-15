@@ -12,40 +12,54 @@
         body { background-color: #f0f2f5; padding-bottom: 80px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
         
-        /* Cabeçalho em Verde Financeiro */
+        /* Cabeçalho Verde */
         .header-financeiro { 
             background: linear-gradient(135deg, #28a745, #1e7e34); 
             color: white; 
-            padding: 30px 20px; 
+            padding: 30px 20px 50px 20px; 
             border-bottom-left-radius: 30px; 
             border-bottom-right-radius: 30px; 
             margin-bottom: 25px; 
         }
+
+        /* Cartões de Resumo dentro do Header */
+        .resumo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .resumo-item { background: rgba(255,255,255,0.15); padding: 10px; border-radius: 15px; backdrop-filter: blur(5px); }
+        .resumo-item small { font-size: 0.7rem; display: block; opacity: 0.9; }
+        .resumo-item b { font-size: 0.9rem; }
         
-        .month-selector { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 10px 20px; margin-top: -45px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .month-selector { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 10px 20px; margin: -35px 15px 20px 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative; z-index: 10; }
         
-        /* Cores de status dinâmicas */
+        /* Cores de status */
         .aguardando-pagamento { border-left: 5px solid #28a745; background-color: #e9f7ef !important; color: #155724; }
         .vencido-alerta { border-left: 5px solid #ffc107; background-color: #fffbeb !important; color: #856404; }
         .vencido-atrasado { border-left: 5px solid #dc3545; background-color: #fff5f5 !important; color: #721c24; }
-        
-        /* Estilo para conta paga (Cinza sem riscar) */
-        .pago-estilo { color: #adb5bd !important; border-left: 5px solid #adb5bd; }
-        .pago-estilo b { color: #adb5bd !important; }
+        .pago-estilo { color: #adb5bd !important; border-left: 5px solid #adb5bd; opacity: 0.8; }
 
         .btn-acao { font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; display: none; margin-top: 2px; }
-        .btn-cadastrar { border-radius: 12px; font-weight: bold; transition: 0.3s; }
+        .btn-cadastrar { border-radius: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="header-financeiro text-center">
-    <small>Total a Pagar no Mês</small>
-    <h3 id="resumo-total">R$ 0,00</h3>
+    <small>Total do Mês (Geral)</small>
+    <h3 id="resumo-geral">R$ 0,00</h3>
+    
+    <div class="resumo-grid">
+        <div class="resumo-item">
+            <small>✅ Já Pago</small>
+            <b id="resumo-pago">R$ 0,00</b>
+        </div>
+        <div class="resumo-item">
+            <small>⏳ Pendente</small>
+            <b id="resumo-pendente">R$ 0,00</b>
+        </div>
+    </div>
 </div>
 
 <div class="container">
-    <div class="month-selector mx-2">
+    <div class="month-selector">
         <button class="btn btn-sm" onclick="mudarMes(-1)">◀</button>
         <span id="mes-atual" class="fw-bold text-uppercase">---</span>
         <button class="btn btn-sm" onclick="mudarMes(1)">▶</button>
@@ -82,17 +96,14 @@
                         <th>VALOR</th>
                     </tr>
                 </thead>
-                <tbody id="lista-contas">
-                    </tbody>
+                <tbody id="lista-contas"></tbody>
             </table>
         </div>
     </div>
 </div>
 
 <script>
-// LINK DO SEU SCRIPT DO GOOGLE
 const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwcsLM5J4L-cick30bCdUDwCA27sfXO_eecFlMMllN0JNl5Ns1MRQZfHfRWaCmzrhKr/exec";
-
 let dataFoco = new Date();
 
 function mudarMes(delta) {
@@ -114,28 +125,32 @@ function carregarContas() {
         .then(res => res.json())
         .then(dados => {
             lista.innerHTML = '';
-            let totalMes = 0;
+            let totalGeral = 0;
+            let totalPago = 0;
+            let totalPendente = 0;
 
             dados.forEach((conta, index) => {
                 const dataVenc = new Date(conta[2]);
-                
-                // Filtra pelo mês e ano selecionados
                 if (dataVenc.getUTCMonth() === dataFoco.getMonth() && dataVenc.getUTCFullYear() === dataFoco.getFullYear()) {
+                    
+                    const valor = parseFloat(conta[1]);
+                    const estaPago = conta[4] === 'Sim';
                     const hoje = new Date();
                     hoje.setHours(0,0,0,0);
                     const diffDias = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
-                    const estaPago = conta[4] === 'Sim';
-                    
-                    if(!estaPago) totalMes += parseFloat(conta[1]);
+
+                    totalGeral += valor;
+                    if(estaPago) totalPago += valor;
+                    else totalPendente += valor;
 
                     let classeCor = "";
                     if (!estaPago) {
                         if (diffDias <= 5 && diffDias >= 0) classeCor = "vencido-alerta";
                         else if (diffDias < 0) classeCor = "vencido-atrasado";
-                        else classeCor = "aguardando-pagamento"; // VERDE para o que está em dia
+                        else classeCor = "aguardando-pagamento";
                     }
 
-                    const linha = `
+                    lista.innerHTML += `
                         <tr class="${estaPago ? 'pago-estilo' : classeCor}">
                             <td>
                                 <div id="container-check-${index}">
@@ -148,13 +163,14 @@ function carregarContas() {
                             </td>
                             <td><small>${conta[0]}</small></td>
                             <td><small>${dataVenc.getUTCDate()}/${dataVenc.getUTCMonth()+1}</small></td>
-                            <td><b>R$ ${parseFloat(conta[1]).toFixed(2)}</b></td>
+                            <td><b>R$ ${valor.toFixed(2)}</b></td>
                         </tr>
                     `;
-                    lista.innerHTML += linha;
                 }
             });
-            document.getElementById('resumo-total').innerText = `R$ ${totalMes.toFixed(2)}`;
+            document.getElementById('resumo-geral').innerText = `R$ ${totalGeral.toFixed(2)}`;
+            document.getElementById('resumo-pago').innerText = `R$ ${totalPago.toFixed(2)}`;
+            document.getElementById('resumo-pendente').innerText = `R$ ${totalPendente.toFixed(2)}`;
         });
 }
 
@@ -180,18 +196,8 @@ function confirmarPagamento(idx, desc, venc) {
     fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
         mode: 'no-cors',
-        body: JSON.stringify({
-            acao: "atualizarStatus",
-            descricao: desc,
-            vencimento: venc,
-            pago: isChecked
-        })
-    }).then(() => {
-        carregarContas();
-    }).catch(err => {
-        alert("Erro ao salvar!");
-        carregarContas();
-    });
+        body: JSON.stringify({ acao: "atualizarStatus", descricao: desc, vencimento: venc, pago: isChecked })
+    }).then(() => carregarContas());
 }
 
 document.getElementById('form-despesa').addEventListener('submit', function(e) {
@@ -199,7 +205,6 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
     const btn = e.target.querySelector('button');
     btn.disabled = true;
     btn.innerText = "Cadastrando...";
-
     fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
         mode: 'no-cors',
@@ -211,8 +216,7 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
         })
     }).then(() => {
         document.getElementById('form-despesa').reset();
-        const bootstrapCollapse = bootstrap.Collapse.getInstance(document.getElementById('collapseForm'));
-        if(bootstrapCollapse) bootstrapCollapse.hide();
+        bootstrap.Collapse.getInstance(document.getElementById('collapseForm')).hide();
         carregarContas();
     }).finally(() => {
         btn.disabled = false;
@@ -220,7 +224,6 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
     });
 });
 
-// Inicialização
 atualizarInterface();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
