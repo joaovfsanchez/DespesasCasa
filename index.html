@@ -14,12 +14,9 @@
         
         .header-financeiro { 
             background: linear-gradient(135deg, #28a745, #1e7e34); 
-            color: white; 
-            padding: 30px 20px 50px 20px; 
-            border-bottom-left-radius: 30px; 
-            border-bottom-right-radius: 30px; 
-            margin-bottom: 25px; 
-            position: relative;
+            color: white; padding: 30px 20px 50px 20px; 
+            border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; 
+            margin-bottom: 25px; position: relative;
         }
 
         .btn-logout { position: absolute; top: 10px; right: 10px; color: rgba(255,255,255,0.7); font-size: 0.7rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 10px; }
@@ -38,6 +35,10 @@
 
         .btn-acao { font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; display: none; margin-top: 2px; }
         .btn-cadastrar { border-radius: 12px; font-weight: bold; }
+        
+        /* Estilo do Menu de 3 Pontos */
+        .dropdown-toggle::after { display: none; }
+        .btn-options { color: #666; padding: 5px 10px; font-size: 1.2rem; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -60,7 +61,7 @@
     </div>
 
     <div class="card p-3 mb-4 mx-2">
-        <button class="btn btn-light w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#collapseForm">➕ Nova Despesa</button>
+        <button id="btn-toggle-form" class="btn btn-light w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#collapseForm">➕ Nova Despesa</button>
         <div class="collapse mt-3" id="collapseForm">
             <form id="form-despesa">
                 <input type="text" id="descricao" class="form-control mb-2" placeholder="O que é?" required>
@@ -79,7 +80,7 @@
                         <input type="number" id="parcelas" class="form-control" placeholder="Repetir (meses)" min="1" value="1">
                     </div>
                 </div>
-                <button type="submit" class="btn btn-success btn-cadastrar w-100">Cadastrar</button>
+                <button type="submit" class="btn btn-success btn-cadastrar w-100">Confirmar</button>
             </form>
         </div>
     </div>
@@ -87,7 +88,7 @@
     <div class="card p-2 mx-2">
         <div class="table-responsive">
             <table class="table align-middle">
-                <thead><tr style="font-size: 0.8rem; color: #666;"><th>PAGO</th><th>DESCRIÇÃO</th><th>VENC.</th><th>VALOR</th></tr></thead>
+                <thead><tr style="font-size: 0.8rem; color: #666;"><th>PAGO</th><th>DESCRIÇÃO</th><th>VENC.</th><th>VALOR</th><th></th></tr></thead>
                 <tbody id="lista-contas"></tbody>
             </table>
         </div>
@@ -124,7 +125,7 @@ function atualizarInterface() {
 
 function carregarContas() {
     const lista = document.getElementById('lista-contas');
-    lista.innerHTML = '<tr><td colspan="4" class="text-center">Carregando...</td></tr>';
+    lista.innerHTML = '<tr><td colspan="5" class="text-center text-muted"><small>Carregando...</small></td></tr>';
 
     fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
@@ -133,7 +134,7 @@ function carregarContas() {
     .then(res => res.text())
     .then(texto => {
         if (texto === "Acesso Negado") {
-            lista.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Senha Incorreta!</td></tr>';
+            lista.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Acesso Negado!</td></tr>';
             return;
         }
         
@@ -148,6 +149,7 @@ function carregarContas() {
                 const estaPago = conta[4] === 'Sim';
                 const hoje = new Date(); hoje.setHours(0,0,0,0);
                 const diffDias = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
+                const dataFormatada = dataVenc.toISOString().split('T')[0];
 
                 totalGeral += valor;
                 if(estaPago) totalPago += valor; else totalPendente += valor;
@@ -156,16 +158,25 @@ function carregarContas() {
 
                 lista.innerHTML += `
                     <tr class="${classeCor}">
-                        <td>
+                        <td style="width: 40px;">
                             <div id="container-check-${index}"><input type="checkbox" class="form-check-input" id="check-${index}" ${estaPago ? 'checked' : ''} onchange="mostrarBotoes(${index})"></div>
                             <div id="botoes-${index}" style="display:none;">
-                                <button id="btn-save-${index}" class="btn btn-success btn-acao" onclick="confirmarPagamento(${index}, '${conta[0]}', '${conta[2]}')">Salvar</button>
+                                <button id="btn-save-${index}" class="btn btn-success btn-acao" onclick="confirmarPagamento(${index}, '${conta[0]}', '${conta[2]}')">S</button>
                                 <button class="btn btn-danger btn-acao" onclick="cancelarEdicao(${index}, ${estaPago})">X</button>
                             </div>
                         </td>
                         <td><small>${conta[0]}</small></td>
                         <td><small>${dataVenc.getUTCDate()}/${dataVenc.getUTCMonth()+1}</small></td>
                         <td><b>R$ ${valor.toFixed(2)}</b></td>
+                        <td class="text-end">
+                            <div class="dropdown">
+                                <span class="btn-options dropdown-toggle" data-bs-toggle="dropdown">⋮</span>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-menu-item btn btn-sm w-100 text-start" onclick="prepararEdicao('${conta[0]}', ${valor}, '${dataFormatada}', '${conta[3]}')">✏️ Editar</a></li>
+                                    <li><a class="dropdown-menu-item btn btn-sm w-100 text-start text-danger" onclick="excluirConta('${conta[0]}', '${conta[2]}')">🗑️ Excluir</a></li>
+                                </ul>
+                            </div>
+                        </td>
                     </tr>`;
             }
         });
@@ -178,8 +189,6 @@ function carregarContas() {
 function mostrarBotoes(idx) {
     document.getElementById(`container-check-${idx}`).style.display = 'none';
     document.getElementById(`botoes-${idx}`).style.display = 'block';
-    const botoes = document.getElementById(`botoes-${idx}`).querySelectorAll('.btn-acao');
-    botoes.forEach(b => b.style.display = 'inline-block');
 }
 
 function cancelarEdicao(idx, estadoOriginal) {
@@ -188,10 +197,29 @@ function cancelarEdicao(idx, estadoOriginal) {
     document.getElementById(`botoes-${idx}`).style.display = 'none';
 }
 
+function prepararEdicao(desc, valor, data, tipo) {
+    document.getElementById('descricao').value = desc;
+    document.getElementById('valor').value = valor;
+    document.getElementById('vencimento').value = data;
+    document.getElementById('tipo').value = tipo;
+    
+    // Abre o formulário e foca na descrição
+    const collapse = new bootstrap.Collapse(document.getElementById('collapseForm'), { toggle: false });
+    collapse.show();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function excluirConta(desc, venc) {
+    if (confirm(`Excluir "${desc}"?`)) {
+        fetch(URL_GOOGLE_SCRIPT, {
+            method: 'POST',
+            body: JSON.stringify({ token: TOKEN, acao: "excluir", descricao: desc, vencimento: venc })
+        }).then(() => carregarContas());
+    }
+}
+
 function confirmarPagamento(idx, desc, venc) {
     const isChecked = document.getElementById(`check-${idx}`).checked;
-    const btn = document.getElementById(`btn-save-${idx}`);
-    btn.innerText = "⏳"; btn.disabled = true;
     fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
         body: JSON.stringify({ token: TOKEN, acao: "atualizarStatus", descricao: desc, vencimento: venc, pago: isChecked })
@@ -201,7 +229,7 @@ function confirmarPagamento(idx, desc, venc) {
 document.getElementById('form-despesa').addEventListener('submit', function(e) {
     e.preventDefault();
     const btn = e.target.querySelector('button');
-    btn.disabled = true; btn.innerText = "Cadastrando...";
+    btn.disabled = true; btn.innerText = "Processando...";
     
     fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
@@ -218,7 +246,7 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
         document.getElementById('parcelas').value = 1;
         bootstrap.Collapse.getInstance(document.getElementById('collapseForm')).hide();
         carregarContas();
-    }).finally(() => { btn.disabled = false; btn.innerText = "Cadastrar"; });
+    }).finally(() => { btn.disabled = false; btn.innerText = "Confirmar"; });
 });
 
 if (TOKEN) atualizarInterface();
