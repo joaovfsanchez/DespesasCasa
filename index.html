@@ -11,16 +11,34 @@
     <style>
         body { background-color: #f0f2f5; padding-bottom: 80px; font-family: 'Segoe UI', sans-serif; }
         .card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-        .header-financeiro { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; padding: 30px 20px 50px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; margin-bottom: 25px; }
+        
+        /* Cabeçalho Verde Profissional */
+        .header-financeiro { 
+            background: linear-gradient(135deg, #28a745, #1e7e34); 
+            color: white; 
+            padding: 30px 20px 50px 20px; 
+            border-bottom-left-radius: 30px; 
+            border-bottom-right-radius: 30px; 
+            margin-bottom: 25px; 
+            position: relative;
+        }
+
+        /* Botão Sair/Trocar Senha */
+        .btn-logout { position: absolute; top: 10px; right: 10px; color: rgba(255,255,255,0.7); font-size: 0.7rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 10px; }
+
         .resumo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .resumo-item { background: rgba(255,255,255,0.15); padding: 10px; border-radius: 15px; backdrop-filter: blur(5px); }
         .resumo-item small { font-size: 0.7rem; display: block; opacity: 0.9; }
         .resumo-item b { font-size: 0.9rem; }
+        
         .month-selector { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 10px 20px; margin: -35px 15px 20px 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative; z-index: 10; }
+        
+        /* Cores de Status */
         .aguardando-pagamento { border-left: 5px solid #28a745; background-color: #e9f7ef !important; color: #155724; }
         .vencido-alerta { border-left: 5px solid #ffc107; background-color: #fffbeb !important; color: #856404; }
         .vencido-atrasado { border-left: 5px solid #dc3545; background-color: #fff5f5 !important; color: #721c24; }
         .pago-estilo { color: #adb5bd !important; border-left: 5px solid #adb5bd; opacity: 0.8; }
+
         .btn-acao { font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; display: none; margin-top: 2px; }
         .btn-cadastrar { border-radius: 12px; font-weight: bold; }
     </style>
@@ -28,6 +46,7 @@
 <body>
 
 <div class="header-financeiro text-center">
+    <a href="#" class="btn-logout" onclick="sair()">Trocar Senha</a>
     <small>Total do Mês</small>
     <h3 id="resumo-geral">R$ 0,00</h3>
     <div class="resumo-grid">
@@ -72,24 +91,29 @@
 </div>
 
 <script>
+// --- CONFIGURAÇÃO E SEGURANÇA ---
 const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwcsLM5J4L-cick30bCdUDwCA27sfXO_eecFlMMllN0JNl5Ns1MRQZfHfRWaCmzrhKr/exec";
-// 1. Tenta pegar a senha que já foi digitada antes neste celular
+let dataFoco = new Date();
 let TOKEN = localStorage.getItem('token_financas');
 
-// 2. Se não tiver senha salva, pede para o usuário digitar
+// Se não houver token, solicita a senha
 if (!TOKEN) {
-    TOKEN = prompt("Por favor, digite a senha de acesso:");
+    TOKEN = prompt("Digite a senha de acesso à planilha:");
     if (TOKEN) {
         localStorage.setItem('token_financas', TOKEN);
+    } else {
+        alert("Acesso negado. Recarregue para tentar novamente.");
     }
 }
 
-// Botão para caso você queira deslogar ou trocar a senha
 function sair() {
-    localStorage.removeItem('token_financas');
-    location.reload();
+    if(confirm("Deseja remover a senha salva neste dispositivo?")) {
+        localStorage.removeItem('token_financas');
+        location.reload();
+    }
 }
 
+// --- FUNÇÕES DE NAVEGAÇÃO ---
 function mudarMes(delta) {
     dataFoco.setMonth(dataFoco.getMonth() + delta);
     atualizarInterface();
@@ -101,16 +125,23 @@ function atualizarInterface() {
     carregarContas();
 }
 
+// --- INTEGRAÇÃO COM A PLANILHA ---
 function carregarContas() {
     const lista = document.getElementById('lista-contas');
-    lista.innerHTML = '<tr><td colspan="4" class="text-center">Protegendo dados...</td></tr>';
+    lista.innerHTML = '<tr><td colspan="4" class="text-center">Validando acesso...</td></tr>';
 
     fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
         body: JSON.stringify({ token: TOKEN, acao: "lerDados" })
     })
-    .then(res => res.json())
-    .then(dados => {
+    .then(res => res.text()) // Primeiro recebemos como texto para validar
+    .then(texto => {
+        if (texto === "Acesso Negado") {
+            lista.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Senha Incorreta! <br> <button class="btn btn-sm btn-link" onclick="sair()">Tentar Outra</button></td></tr>';
+            return;
+        }
+        
+        const dados = JSON.parse(texto);
         lista.innerHTML = '';
         let totalGeral = 0, totalPago = 0, totalPendente = 0;
 
@@ -150,6 +181,9 @@ function carregarContas() {
         document.getElementById('resumo-geral').innerText = `R$ ${totalGeral.toFixed(2)}`;
         document.getElementById('resumo-pago').innerText = `R$ ${totalPago.toFixed(2)}`;
         document.getElementById('resumo-pendente').innerText = `R$ ${totalPendente.toFixed(2)}`;
+    })
+    .catch(err => {
+        lista.innerHTML = '<tr><td colspan="4" class="text-center">Erro de conexão.</td></tr>';
     });
 }
 
@@ -196,7 +230,8 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
     }).finally(() => { btn.disabled = false; btn.innerText = "Cadastrar"; });
 });
 
-atualizarInterface();
+// Inicialização
+if (TOKEN) atualizarInterface();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
