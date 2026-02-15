@@ -4,31 +4,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finanças Familiar</title>
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2910/2910303.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f0f2f5; padding-bottom: 80px; font-family: 'Segoe UI', sans-serif; }
         .card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-        .header-financeiro { background: linear-gradient(135deg, #28a745, #1e7e34); color: white; padding: 30px 20px 50px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; margin-bottom: 25px; position: relative; }
+        
+        .header-financeiro { 
+            background: linear-gradient(135deg, #28a745, #1e7e34); 
+            color: white; padding: 30px 20px 55px 20px; 
+            border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; 
+            margin-bottom: 25px; position: relative;
+        }
+
         .btn-logout { position: absolute; top: 10px; right: 10px; color: rgba(255,255,255,0.7); font-size: 0.7rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 10px; }
-        .resumo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .resumo-item { background: rgba(255,255,255,0.15); padding: 10px; border-radius: 15px; backdrop-filter: blur(5px); }
+
+        .resumo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .resumo-item { 
+            background: rgba(255,255,255,0.15); 
+            padding: 12px 8px; 
+            border-radius: 15px; 
+            backdrop-filter: blur(5px); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .resumo-item small { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.85; margin-bottom: 2px; }
+        .resumo-item b { font-size: 1rem; font-weight: 700; }
+        
         .month-selector { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 10px 20px; margin: -35px 15px 20px 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative; z-index: 10; }
+        
         .aguardando-pagamento { border-left: 5px solid #28a745; background-color: #e9f7ef !important; }
         .vencido-alerta { border-left: 5px solid #ffc107; background-color: #fffbeb !important; }
         .vencido-atrasado { border-left: 5px solid #dc3545; background-color: #fff5f5 !important; }
         .pago-estilo { color: #adb5bd !important; border-left: 5px solid #adb5bd; opacity: 0.8; }
+        
         .btn-options { color: #666; padding: 5px 10px; font-size: 1.2rem; cursor: pointer; }
+        .dropdown-toggle::after { display: none; }
     </style>
 </head>
 <body>
 
 <div class="header-financeiro text-center">
     <a href="#" class="btn-logout" onclick="sair()">Trocar Senha</a>
-    <small>Total do Mês</small>
-    <h3 id="resumo-geral">R$ 0,00</h3>
+    <small style="opacity: 0.9;">Total do Mês</small>
+    <h3 id="resumo-geral" style="font-weight: 800; margin-top: 5px;">R$ 0,00</h3>
+    
     <div class="resumo-grid">
-        <div class="resumo-item"><small>✅ Já Pago</small><b id="resumo-pago">R$ 0,00</b></div>
-        <div class="resumo-item"><small>⏳ Pendente</small><b id="resumo-pendente">R$ 0,00</b></div>
+        <div class="resumo-item">
+            <small>✅ Já Pago</small>
+            <b id="resumo-pago">R$ 0,00</b>
+        </div>
+        <div class="resumo-item">
+            <small>⏳ Pendente</small>
+            <b id="resumo-pendente">R$ 0,00</b>
+        </div>
     </div>
 </div>
 
@@ -86,11 +118,11 @@ let dataFoco = new Date();
 let TOKEN = localStorage.getItem('token_financas');
 
 if (!TOKEN) {
-    TOKEN = prompt("Senha:");
+    TOKEN = prompt("Digite a senha de acesso:");
     if (TOKEN) localStorage.setItem('token_financas', TOKEN);
 }
 
-function sair() { localStorage.removeItem('token_financas'); location.reload(); }
+function sair() { if(confirm("Trocar senha?")) { localStorage.removeItem('token_financas'); location.reload(); } }
 function mudarMes(d) { dataFoco.setMonth(dataFoco.getMonth() + d); atualizarInterface(); }
 function atualizarInterface() {
     const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -100,7 +132,7 @@ function atualizarInterface() {
 
 function carregarContas() {
     const lista = document.getElementById('lista-contas');
-    lista.innerHTML = '<tr><td class="text-center p-4">Carregando...</td></tr>';
+    lista.innerHTML = '<tr><td class="text-center p-4 text-muted">Carregando dados...</td></tr>';
 
     fetch(URL_GOOGLE_SCRIPT, { method: 'POST', body: JSON.stringify({ token: TOKEN, acao: "lerDados" }) })
     .then(r => r.json()).then(dados => {
@@ -119,13 +151,12 @@ function carregarContas() {
                 let cor = pago ? 'pago-estilo' : (diff < 0 ? 'vencido-atrasado' : (diff <= 5 ? 'vencido-alerta' : 'aguardando-pagamento'));
 
                 lista.innerHTML += `<tr class="${cor}">
-                    <td><input type="checkbox" class="form-check-input" ${pago?'checked':''} onchange="status('${conta[0]}','${conta[2]}',this.checked)"></td>
-                    <td><small>${conta[0]}</small></td>
-                    <td><small>${dVenc.getUTCDate()}/${dVenc.getUTCMonth()+1}</small></td>
-                    <td><b>R$ ${valor.toFixed(2)}</b></td>
-                    <td class="text-end">
+                    <td style="width: 30px;"><input type="checkbox" class="form-check-input" ${pago?'checked':''} onchange="status('${conta[0]}','${conta[2]}',this.checked)"></td>
+                    <td><div style="font-size: 0.85rem;">${conta[0]}</div><div style="font-size: 0.65rem; opacity: 0.7;">Venc: ${dVenc.getUTCDate()}/${dVenc.getUTCMonth()+1}</div></td>
+                    <td class="text-end"><b>R$ ${valor.toFixed(2)}</b></td>
+                    <td class="text-end" style="width: 40px;">
                         <div class="dropdown">
-                            <span class="btn-options dropdown-toggle" data-bs-toggle="dropdown">⋮</span>
+                            <span class="btn-options" data-bs-toggle="dropdown">⋮</span>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" onclick="prepararEdicao('${conta[0]}',${valor},'${dIso}','${conta[3]}')">✏️ Editar</a></li>
                                 <li><a class="dropdown-item text-danger" onclick="excluir('${conta[0]}','${conta[2]}')">🗑️ Excluir</a></li>
@@ -138,7 +169,7 @@ function carregarContas() {
         document.getElementById('resumo-geral').innerText = `R$ ${tGeral.toFixed(2)}`;
         document.getElementById('resumo-pago').innerText = `R$ ${tPago.toFixed(2)}`;
         document.getElementById('resumo-pendente').innerText = `R$ ${tPendente.toFixed(2)}`;
-    });
+    }).catch(() => { lista.innerHTML = '<tr><td class="text-center p-4">Erro ao carregar.</td></tr>'; });
 }
 
 function status(desc, venc, p) {
@@ -156,7 +187,7 @@ function prepararEdicao(desc, valor, data, tipo) {
     document.getElementById('btn-cancelar-edit').style.display = "block";
     document.getElementById('btn-form-titulo').innerText = "✏️ Editando Despesa";
     new bootstrap.Collapse(document.getElementById('collapseForm'), {toggle:false}).show();
-    window.scrollTo(0,0);
+    window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 function resetarForm() {
@@ -178,7 +209,7 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
     e.preventDefault();
     const b = document.getElementById('btn-submit');
     const descAntiga = document.getElementById('edit-original-desc').value;
-    b.disabled = true;
+    b.disabled = true; b.innerText = "Aguarde...";
     
     const payload = {
         token: TOKEN,
@@ -194,7 +225,7 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
 
     fetch(URL_GOOGLE_SCRIPT, { method: 'POST', body: JSON.stringify(payload) })
     .then(() => { resetarForm(); carregarContas(); })
-    .finally(() => b.disabled = false);
+    .finally(() => { b.disabled = false; b.innerText = descAntiga ? "Salvar Alteração" : "Confirmar"; });
 });
 
 atualizarInterface();
