@@ -9,17 +9,22 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f0f2f5; padding-bottom: 80px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-        .header-financeiro { background: linear-gradient(135deg, #0d6efd, #003d99); color: white; padding: 30px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; margin-bottom: 25px; }
-        .month-selector { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 10px 20px; margin-top: -45px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .vencido-alerta { border-left: 5px solid #ffc107; background-color: #fffbeb !important; }
-        .vencido-atrasado { border-left: 5px solid #dc3545; background-color: #fff5f5 !important; }
-        .pago-estilo { text-decoration: line-through; opacity: 0.6; }
-        .btn-salvar-pago { font-size: 0.8rem; padding: 2px 8px; border-radius: 10px; display: none; }
-        .btn-cadastrar { border-radius: 12px; font-weight: bold; transition: 0.3s; }
-        .btn-cadastrar:active { transform: scale(0.95); }
-    </style>
+    body { background-color: #f0f2f5; padding-bottom: 80px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+    .header-financeiro { background: linear-gradient(135deg, #0d6efd, #003d99); color: white; padding: 30px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; margin-bottom: 25px; }
+    .month-selector { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 10px 20px; margin-top: -45px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    
+    /* Cores de status */
+    .vencido-alerta { border-left: 5px solid #ffc107; background-color: #fffbeb !important; }
+    .vencido-atrasado { border-left: 5px solid #dc3545; background-color: #fff5f5 !important; }
+    
+    /* Estilo para quando está pago: apenas cinza, sem riscar */
+    .pago-estilo { color: #adb5bd !important; }
+    .pago-estilo b { color: #adb5bd !important; }
+
+    .btn-acao { font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; display: none; margin-top: 2px; }
+    .btn-cadastrar { border-radius: 12px; font-weight: bold; transition: 0.3s; }
+</style>
 </head>
 <body>
 
@@ -76,7 +81,7 @@
 <script>
 const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwcsLM5J4L-cick30bCdUDwCA27sfXO_eecFlMMllN0JNl5Ns1MRQZfHfRWaCmzrhKr/exec";
 
-let dataFoco = new Date(); // Mês atual de navegação
+let dataFoco = new Date();
 
 function mudarMes(delta) {
     dataFoco.setMonth(dataFoco.getMonth() + delta);
@@ -102,9 +107,7 @@ function carregarContas() {
             dados.forEach((conta, index) => {
                 const dataVenc = new Date(conta[2]);
                 
-                // Filtro: só mostra se for o mesmo mês e ano da navegação
                 if (dataVenc.getUTCMonth() === dataFoco.getMonth() && dataVenc.getUTCFullYear() === dataFoco.getFullYear()) {
-                    
                     const hoje = new Date();
                     hoje.setHours(0,0,0,0);
                     const diffDias = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
@@ -121,8 +124,13 @@ function carregarContas() {
                     const linha = `
                         <tr class="${classeCor} ${estaPago ? 'pago-estilo' : ''}">
                             <td>
-                                <input type="checkbox" class="form-check-input" id="check-${index}" ${estaPago ? 'checked' : ''} onchange="mostrarBotaoSalvar(${index})">
-                                <button id="btn-save-${index}" class="btn btn-success btn-salvar-pago" onclick="confirmarPagamento(${index}, '${conta[0]}', '${conta[2]}')">Salvar</button>
+                                <div id="container-check-${index}">
+                                    <input type="checkbox" class="form-check-input" id="check-${index}" ${estaPago ? 'checked' : ''} onchange="mostrarBotoes(${index})">
+                                </div>
+                                <div id="botoes-${index}" style="display:none;">
+                                    <button id="btn-save-${index}" class="btn btn-success btn-acao" onclick="confirmarPagamento(${index}, '${conta[0]}', '${conta[2]}')">Salvar</button>
+                                    <button class="btn btn-danger btn-acao" onclick="cancelarEdicao(${index}, ${estaPago})">X</button>
+                                </div>
                             </td>
                             <td><small>${conta[0]}</small></td>
                             <td><small>${dataVenc.getUTCDate()}/${dataVenc.getUTCMonth()+1}</small></td>
@@ -136,15 +144,25 @@ function carregarContas() {
         });
 }
 
-function mostrarBotaoSalvar(idx) {
-    document.getElementById(`btn-save-${idx}`).style.display = 'block';
-    document.getElementById(`check-${idx}`).style.display = 'none';
+function mostrarBotoes(idx) {
+    document.getElementById(`container-check-${idx}`).style.display = 'none';
+    document.getElementById(`botoes-${idx}`).style.display = 'block';
+    const botoes = document.getElementById(`botoes-${idx}`).querySelectorAll('.btn-acao');
+    botoes.forEach(b => b.style.display = 'inline-block');
+}
+
+function cancelarEdicao(idx, estadoOriginal) {
+    document.getElementById(`check-${idx}`).checked = estadoOriginal;
+    document.getElementById(`container-check-${idx}`).style.display = 'block';
+    document.getElementById(`botoes-${idx}`).style.display = 'none';
 }
 
 function confirmarPagamento(idx, desc, venc) {
     const isChecked = document.getElementById(`check-${idx}`).checked;
     const btn = document.getElementById(`btn-save-${idx}`);
-    btn.innerText = "Wait...";
+    const originalText = btn.innerText;
+    btn.innerText = "⏳";
+    btn.disabled = true;
 
     fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
@@ -156,14 +174,20 @@ function confirmarPagamento(idx, desc, venc) {
             pago: isChecked
         })
     }).then(() => {
-        alert("Status Atualizado!");
-        carregarContas();
+        carregarContas(); // Recarrega a lista para mostrar o novo status
+    }).catch(err => {
+        alert("Erro ao salvar!");
+        btn.innerText = originalText;
+        btn.disabled = false;
     });
 }
 
-// Envio do formulário (mantido do anterior)
 document.getElementById('form-despesa').addEventListener('submit', function(e) {
     e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.innerText = "Cadastrando...";
+
     fetch(URL_GOOGLE_SCRIPT, {
         method: 'POST',
         mode: 'no-cors',
@@ -174,9 +198,12 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
             tipo: document.getElementById('tipo').value
         })
     }).then(() => {
-        alert('Cadastrado!');
         document.getElementById('form-despesa').reset();
+        bootstrap.Collapse.getInstance(document.getElementById('collapseForm')).hide(); // Fecha o formulário
         carregarContas();
+    }).finally(() => {
+        btn.disabled = false;
+        btn.innerText = "Cadastrar";
     });
 });
 
