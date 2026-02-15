@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Financeiro Familiar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding-bottom: 50px; }
+        .card { border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .vencido { color: #dc3545; font-weight: bold; }
+        .pago { text-decoration: line-through; color: #6c757d; }
+        .btn-cadastrar { background-color: #0d6efd; color: white; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-4">
+    <h2 class="text-center mb-4">💰 Nosso Controle</h2>
+
+    <div class="card p-3 mb-4">
+        <h5>Nova Despesa</h5>
+        <form id="form-despesa">
+            <div class="mb-2">
+                <input type="text" id="descricao" class="form-control" placeholder="Ex: Aluguel, Luz, Faculdade..." required>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <input type="number" id="valor" class="form-control" placeholder="R$ Valor" step="0.01" required>
+                </div>
+                <div class="col-6">
+                    <input type="date" id="vencimento" class="form-control" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <select id="tipo" class="form-select">
+                    <option value="Fixa">Despesa Mensal (Fixa)</option>
+                    <option value="Extra">Última Hora (Variável)</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-cadastrar">Adicionar à Planilha</button>
+        </form>
+    </div>
+
+    <div class="card p-3">
+        <h5>Contas do Mês</h5>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Pago</th>
+                        <th>O quê?</th>
+                        <th>Vence</th>
+                        <th>R$</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-contas">
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>Exemplo: Faculdade</td>
+                        <td>10/03</td>
+                        <td>850,00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Por enquanto, apenas um alerta para testar o botão
+    document.getElementById('form-despesa').addEventListener('submit', function(e) {
+        e.preventDefault();
+        alert('Botão clicado! Próximo passo: Conectar com o Google Sheets.');
+    });
+</script>
+
+</body>
+</html>
