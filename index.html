@@ -43,11 +43,27 @@
             position: relative; z-index: 100; flex-shrink: 0;
         }
 
-        /* AJUSTE: Container com altura mínima e scroll */
+        /* Estilo para a Bolinha de Notificação */
+        .seta-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .bolinha-notificacao {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 10px;
+            height: 10px;
+            background-color: #dc3545;
+            border-radius: 50%;
+            border: 2px solid white;
+            display: none; /* Inicia escondida */
+        }
+
         .scroll-container {
             flex-grow: 1;
             overflow-y: auto;
-            padding: 0 15px 100px 15px; /* Padding extra no fundo para o menu respirar */
+            padding: 0 15px 100px 15px;
             -webkit-overflow-scrolling: touch;
         }
 
@@ -56,11 +72,10 @@
             border-radius: 20px; 
             background: white; 
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            min-height: 300px; /* Garante que o card tenha tamanho mesmo com poucos itens */
+            min-height: 300px;
         }
         
         .table { margin-bottom: 0; }
-        /* Impede que a célula da tabela esconda o menu */
         .table-responsive { overflow: visible !important; } 
 
         .aguardando-pagamento { border-left: 5px solid #28a745; background-color: #f8fff9 !important; }
@@ -68,7 +83,6 @@
         .vencido-atrasado { border-left: 5px solid #dc3545; background-color: #fffafa !important; }
         .pago-estilo { color: #adb5bd !important; border-left: 5px solid #adb5bd; opacity: 0.7; }
         
-        /* AJUSTE: Menu flutuante real */
         .btn-options { 
             color: #999; padding: 10px; font-size: 1.3rem; cursor: pointer; 
             display: inline-block; transition: 0.2s;
@@ -98,7 +112,10 @@
 </div>
 
 <div class="month-selector">
-    <button class="btn btn-sm" onclick="mudarMes(-1)">◀</button>
+    <div class="seta-wrapper" onclick="mudarMes(-1)">
+        <button class="btn btn-sm">◀</button>
+        <span id="alerta-atraso" class="bolinha-notificacao"></span>
+    </div>
     <span id="mes-atual" class="fw-bold text-uppercase">---</span>
     <button class="btn btn-sm" onclick="mudarMes(1)">▶</button>
 </div>
@@ -162,13 +179,30 @@ function atualizarInterface() {
 
 function carregarContas() {
     const lista = document.getElementById('lista-contas');
+    const alertaAtraso = document.getElementById('alerta-atraso');
     lista.innerHTML = '<tr><td class="text-center p-5 text-muted">Carregando...</td></tr>';
 
     fetch(URL_GOOGLE_SCRIPT, { method: 'POST', body: JSON.stringify({ token: TOKEN, acao: "lerDados" }) })
     .then(r => r.json()).then(dados => {
         lista.innerHTML = '';
         let tGeral = 0, tPago = 0, tPendente = 0;
+        let temAtrasoPassado = false;
         
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+
+        // Verifica atrasos em qualquer data anterior a hoje
+        dados.forEach(conta => {
+            const dVenc = new Date(conta[2]);
+            const pago = conta[4] === 'Sim';
+            if (!pago && dVenc < hoje) {
+                temAtrasoPassado = true;
+            }
+        });
+
+        // Exibe ou esconde a bolinha vermelha
+        alertaAtraso.style.display = temAtrasoPassado ? 'block' : 'none';
+
         dados.sort((a, b) => new Date(a[2]) - new Date(b[2]));
 
         dados.forEach((conta, i) => {
@@ -176,7 +210,6 @@ function carregarContas() {
             if (dVenc.getUTCMonth() === dataFoco.getMonth() && dVenc.getUTCFullYear() === dataFoco.getFullYear()) {
                 const valor = parseFloat(conta[1]);
                 const pago = conta[4] === 'Sim';
-                const hoje = new Date(); hoje.setHours(0,0,0,0);
                 const diff = Math.ceil((dVenc - hoje) / 86400000);
                 const dIso = dVenc.toISOString().split('T')[0];
 
