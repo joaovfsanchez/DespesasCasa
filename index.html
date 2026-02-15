@@ -9,34 +9,45 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-    body { background-color: #f0f2f5; padding-bottom: 80px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-    .header-financeiro { background: linear-gradient(135deg, #0d6efd, #003d99); color: white; padding: 30px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; margin-bottom: 25px; }
-    .month-selector { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 10px 20px; margin-top: -45px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    
-    /* Cores de status */
-    .vencido-alerta { border-left: 5px solid #ffc107; background-color: #fffbeb !important; }
-    .vencido-atrasado { border-left: 5px solid #dc3545; background-color: #fff5f5 !important; }
-    
-    /* Estilo para quando está pago: apenas cinza, sem riscar */
-    .pago-estilo { color: #adb5bd !important; }
-    .pago-estilo b { color: #adb5bd !important; }
+        body { background-color: #f0f2f5; padding-bottom: 80px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        
+        /* Cabeçalho em Verde Financeiro */
+        .header-financeiro { 
+            background: linear-gradient(135deg, #28a745, #1e7e34); 
+            color: white; 
+            padding: 30px 20px; 
+            border-bottom-left-radius: 30px; 
+            border-bottom-right-radius: 30px; 
+            margin-bottom: 25px; 
+        }
+        
+        .month-selector { display: flex; align-items: center; justify-content: space-between; background: white; border-radius: 15px; padding: 10px 20px; margin-top: -45px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        /* Cores de status dinâmicas */
+        .aguardando-pagamento { border-left: 5px solid #28a745; background-color: #e9f7ef !important; color: #155724; }
+        .vencido-alerta { border-left: 5px solid #ffc107; background-color: #fffbeb !important; color: #856404; }
+        .vencido-atrasado { border-left: 5px solid #dc3545; background-color: #fff5f5 !important; color: #721c24; }
+        
+        /* Estilo para conta paga (Cinza sem riscar) */
+        .pago-estilo { color: #adb5bd !important; border-left: 5px solid #adb5bd; }
+        .pago-estilo b { color: #adb5bd !important; }
 
-    .btn-acao { font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; display: none; margin-top: 2px; }
-    .btn-cadastrar { border-radius: 12px; font-weight: bold; transition: 0.3s; }
-</style>
+        .btn-acao { font-size: 0.7rem; padding: 2px 6px; border-radius: 8px; display: none; margin-top: 2px; }
+        .btn-cadastrar { border-radius: 12px; font-weight: bold; transition: 0.3s; }
+    </style>
 </head>
 <body>
 
 <div class="header-financeiro text-center">
-    <small>Nosso Controle</small>
+    <small>Total a Pagar no Mês</small>
     <h3 id="resumo-total">R$ 0,00</h3>
 </div>
 
 <div class="container">
     <div class="month-selector mx-2">
         <button class="btn btn-sm" onclick="mudarMes(-1)">◀</button>
-        <span id="mes-atual" class="fw-bold text-uppercase">Março 2026</span>
+        <span id="mes-atual" class="fw-bold text-uppercase">---</span>
         <button class="btn btn-sm" onclick="mudarMes(1)">▶</button>
     </div>
 
@@ -55,7 +66,7 @@
                     <option value="Fixa">Fixa</option>
                     <option value="Extra">Extra</option>
                 </select>
-                <button type="submit" class="btn btn-primary btn-cadastrar w-100">Cadastrar</button>
+                <button type="submit" class="btn btn-success btn-cadastrar w-100">Cadastrar</button>
             </form>
         </div>
     </div>
@@ -79,6 +90,7 @@
 </div>
 
 <script>
+// LINK DO SEU SCRIPT DO GOOGLE
 const URL_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbwcsLM5J4L-cick30bCdUDwCA27sfXO_eecFlMMllN0JNl5Ns1MRQZfHfRWaCmzrhKr/exec";
 
 let dataFoco = new Date();
@@ -107,6 +119,7 @@ function carregarContas() {
             dados.forEach((conta, index) => {
                 const dataVenc = new Date(conta[2]);
                 
+                // Filtra pelo mês e ano selecionados
                 if (dataVenc.getUTCMonth() === dataFoco.getMonth() && dataVenc.getUTCFullYear() === dataFoco.getFullYear()) {
                     const hoje = new Date();
                     hoje.setHours(0,0,0,0);
@@ -119,10 +132,11 @@ function carregarContas() {
                     if (!estaPago) {
                         if (diffDias <= 5 && diffDias >= 0) classeCor = "vencido-alerta";
                         else if (diffDias < 0) classeCor = "vencido-atrasado";
+                        else classeCor = "aguardando-pagamento"; // VERDE para o que está em dia
                     }
 
                     const linha = `
-                        <tr class="${classeCor} ${estaPago ? 'pago-estilo' : ''}">
+                        <tr class="${estaPago ? 'pago-estilo' : classeCor}">
                             <td>
                                 <div id="container-check-${index}">
                                     <input type="checkbox" class="form-check-input" id="check-${index}" ${estaPago ? 'checked' : ''} onchange="mostrarBotoes(${index})">
@@ -160,7 +174,6 @@ function cancelarEdicao(idx, estadoOriginal) {
 function confirmarPagamento(idx, desc, venc) {
     const isChecked = document.getElementById(`check-${idx}`).checked;
     const btn = document.getElementById(`btn-save-${idx}`);
-    const originalText = btn.innerText;
     btn.innerText = "⏳";
     btn.disabled = true;
 
@@ -174,11 +187,10 @@ function confirmarPagamento(idx, desc, venc) {
             pago: isChecked
         })
     }).then(() => {
-        carregarContas(); // Recarrega a lista para mostrar o novo status
+        carregarContas();
     }).catch(err => {
         alert("Erro ao salvar!");
-        btn.innerText = originalText;
-        btn.disabled = false;
+        carregarContas();
     });
 }
 
@@ -199,7 +211,8 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
         })
     }).then(() => {
         document.getElementById('form-despesa').reset();
-        bootstrap.Collapse.getInstance(document.getElementById('collapseForm')).hide(); // Fecha o formulário
+        const bootstrapCollapse = bootstrap.Collapse.getInstance(document.getElementById('collapseForm'));
+        if(bootstrapCollapse) bootstrapCollapse.hide();
         carregarContas();
     }).finally(() => {
         btn.disabled = false;
@@ -207,6 +220,7 @@ document.getElementById('form-despesa').addEventListener('submit', function(e) {
     });
 });
 
+// Inicialização
 atualizarInterface();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
